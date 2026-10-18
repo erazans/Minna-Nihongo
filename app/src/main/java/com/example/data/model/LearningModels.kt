@@ -111,24 +111,26 @@ data class Lesson(
 )
 
 data class UserStats(
-    val streakDays: Int = 3,
+    val streakDays: Int = 0,
     val lastActiveDate: String = "",
-    val totalXp: Int = 240,
-    val todayXp: Int = 45,
-    val dailyGoalXp: Int = 50,
+    val totalXp: Int = 0,
+    val todayXp: Int = 0,
+    val dailyGoalXp: Int = 0,
     val lives: Int = 5,
     val maxLives: Int = 5,
-    val completedLessonIds: Set<Int> = setOf(1),
+    val completedLessonIds: Set<Int> = emptySet(),
     val bookmarkedWordIds: Set<String> = emptySet(),
-    val masteredWordIds: Set<String> = setOf("1_1", "1_2", "1_3"),
-    val lessonsProgress: Map<Int, Float> = mapOf(1 to 1.0f, 2 to 0.4f),
-    val totalQuestionsAnswered: Int = 48,
-    val correctAnswers: Int = 44,
+    val masteredWordIds: Set<String> = emptySet(),
+    val lessonsProgress: Map<Int, Float> = emptyMap(),
+    val totalQuestionsAnswered: Int = 0,
+    val correctAnswers: Int = 0,
     val dailyReminderEnabled: Boolean = true,
     val reminderHour: Int = 19,
     val reminderMinute: Int = 0,
     val romajiDisplayMode: RomajiDisplayMode = RomajiDisplayMode.BOTH,
-    val masteredKana: Set<String> = setOf("あ", "い", "う", "え", "お", "ア", "イ", "ウ", "エ", "オ")
+    val autoPronounceWords: Boolean = true,
+    val masteredKana: Set<String> = emptySet(),
+    val masteredKanji: Set<String> = emptySet()
 )
 
 data class AiChatMessage(

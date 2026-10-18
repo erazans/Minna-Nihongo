@@ -1,5 +1,7 @@
 package com.example
 
+import android.app.NotificationManager
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -23,6 +25,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Clear any old or lingering notifications so the app does not remain in the notification bar
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancelAll()
+
         setContent {
             MinnaNihongoTheme {
                 val currentScreen by viewModel.currentScreen.collectAsState()
@@ -30,34 +36,15 @@ class MainActivity : ComponentActivity() {
                 val lessons by viewModel.lessons.collectAsState()
                 val selectedLesson by viewModel.selectedLesson.collectAsState()
 
-                var showRefillLivesDialog by remember { mutableStateOf(false) }
-
-                // Refill Lives Dialog
-                if (showRefillLivesDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showRefillLivesDialog = false },
-                        title = { Text("Recharger vos Vies ❤️") },
-                        text = {
-                            Text("Dans Minna Nihongo, chaque erreur vous coûte 1 vie comme sur Duolingo. Voulez-vous recharger vos 5 vies pour continuer à pratiquer sereinement ?")
-                        },
-                        confirmButton = {
-                            Button(onClick = {
-                                viewModel.refillLives()
-                                showRefillLivesDialog = false
-                            }) {
-                                Text("Recharger (Gratuit)")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showRefillLivesDialog = false }) {
-                                Text("Annuler")
-                            }
-                        }
-                    )
-                }
-
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val selectedSection by viewModel.selectedSection.collectAsState()
+
+                    val bottomNavBar: @Composable () -> Unit = {
+                        com.example.ui.components.AppBottomNavigationBar(
+                            currentScreen = currentScreen,
+                            onNavigate = { screen -> viewModel.navigateTo(screen) }
+                        )
+                    }
 
                     when (currentScreen) {
                         AppScreen.HOME -> {
@@ -82,12 +69,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenStats = {
                                     viewModel.navigateTo(AppScreen.STATS)
                                 },
-                                onRefillLives = {
-                                    showRefillLivesDialog = true
-                                },
-                                onUpdateRomajiMode = { mode ->
-                                    viewModel.updateRomajiDisplayMode(mode)
-                                }
+                                onRefillLives = { /* Lives system removed */ },
+                                bottomBar = bottomNavBar
                             )
                         }
 
@@ -97,10 +80,12 @@ class MainActivity : ComponentActivity() {
                                 onBack = { viewModel.onBack() },
                                 onSpeak = { text -> viewModel.speak(text) },
                                 currentRomajiMode = userStats.romajiDisplayMode,
-                                onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) },
                                 masteredKana = userStats.masteredKana,
                                 onToggleMasterKana = { kana -> viewModel.toggleMasterKana(kana) },
-                                onAddXp = { xp -> viewModel.addXp(xp) }
+                                masteredKanji = userStats.masteredKanji,
+                                onToggleMasterKanji = { kanji -> viewModel.toggleMasterKanji(kanji) },
+                                onAddXp = { /* XP system removed */ },
+                                bottomBar = bottomNavBar
                             )
                         }
 
@@ -115,8 +100,7 @@ class MainActivity : ComponentActivity() {
                                     onSpeak = { text -> viewModel.speak(text) },
                                     bookmarkedWords = userStats.bookmarkedWordIds,
                                     onToggleBookmark = { id -> viewModel.toggleBookmarkWord(id) },
-                                    romajiMode = userStats.romajiDisplayMode,
-                                    onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) }
+                                    romajiMode = userStats.romajiDisplayMode
                                 )
                             } ?: run {
                                 viewModel.onBack()
@@ -135,7 +119,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onSpeak = { text -> viewModel.speak(text) },
                                     onLoseLife = { viewModel.loseLife() },
-                                    currentLives = userStats.lives,
+                                    currentLives = 5,
                                     romajiMode = userStats.romajiDisplayMode
                                 )
                             } ?: run {
@@ -148,8 +132,9 @@ class MainActivity : ComponentActivity() {
                             AiConversationScreen(
                                 onBack = { viewModel.onBack() },
                                 onSpeak = { text -> viewModel.speak(text) },
-                                onAddXp = { xp -> viewModel.addXp(xp) },
-                                romajiMode = userStats.romajiDisplayMode
+                                onAddXp = { /* XP removed */ },
+                                romajiMode = userStats.romajiDisplayMode,
+                                bottomBar = bottomNavBar
                             )
                         }
 
@@ -163,7 +148,7 @@ class MainActivity : ComponentActivity() {
                                 onToggleBookmark = { id -> viewModel.toggleBookmarkWord(id) },
                                 onToggleMastered = { id -> viewModel.toggleMasteredWord(id) },
                                 romajiMode = userStats.romajiDisplayMode,
-                                onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) }
+                                bottomBar = bottomNavBar
                             )
                         }
 
@@ -175,7 +160,9 @@ class MainActivity : ComponentActivity() {
                                 onUpdateReminder = { enabled, hour, min ->
                                     viewModel.setDailyReminder(enabled, hour, min)
                                 },
-                                onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) }
+                                onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) },
+                                onResetProgress = { viewModel.resetAllProgress() },
+                                bottomBar = bottomNavBar
                             )
                         }
                     }

@@ -7,19 +7,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -32,18 +34,8 @@ import com.example.data.model.RomajiDisplayMode
 import com.example.data.model.UserStats
 import com.example.service.DailyNotificationHelper
 import com.example.ui.components.RomajiModeSelectorBar
-import com.example.ui.theme.GoldenYellow
 import com.example.ui.theme.JapanRedPrimary
 import com.example.ui.theme.MatchaGreen
-import com.example.ui.theme.StreakOrange
-
-data class Achievement(
-    val title: String,
-    val description: String,
-    val emoji: String,
-    val isUnlocked: Boolean,
-    val progress: Float
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,34 +44,65 @@ fun StatsStreakScreen(
     onBack: () -> Unit,
     onUpdateReminder: (enabled: Boolean, hour: Int, minute: Int) -> Unit,
     onUpdateRomajiMode: (RomajiDisplayMode) -> Unit = {},
+    onToggleAutoPronounce: (Boolean) -> Unit = {},
+    onResetProgress: () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var reminderEnabled by remember { mutableStateOf(userStats.dailyReminderEnabled) }
+    var selectedHour by remember { mutableIntStateOf(userStats.reminderHour) }
+    var selectedMinute by remember { mutableIntStateOf(userStats.reminderMinute) }
     var notificationSentFeedback by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            DailyNotificationHelper.showDailyStreakReminder(context, userStats.streakDays)
+            DailyNotificationHelper.showDailyReminderNotification(context)
             notificationSentFeedback = true
         }
     }
 
-    val achievements = listOf(
-        Achievement("Premier pas", "Terminez votre première leçon", "🌱", userStats.completedLessonIds.isNotEmpty(), 1f),
-        Achievement("Flamme 3 jours", "Maintenez une série de 3 jours", "🔥", userStats.streakDays >= 3, (userStats.streakDays / 3f).coerceAtMost(1f)),
-        Achievement("Semaine d'or", "Maintenez une série de 7 jours", "⚡", userStats.streakDays >= 7, (userStats.streakDays / 7f).coerceAtMost(1f)),
-        Achievement("Polyglotte IMC", "Terminez les 5 premières leçons", "🏢", userStats.completedLessonIds.size >= 5, (userStats.completedLessonIds.size / 5f).coerceAtMost(1f)),
-        Achievement("Maître des Particules", "Atteignez 90% de précision globale", "🎯", userStats.totalQuestionsAnswered > 20 && (userStats.correctAnswers.toFloat() / userStats.totalQuestionsAnswered) >= 0.85f, 0.9f),
-        Achievement("Vocabulaire Express", "Maîtrisez 20 mots dans le glossaire", "📚", userStats.masteredWordIds.size >= 20, (userStats.masteredWordIds.size / 20f).coerceAtMost(1f))
-    )
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Remettre l'application à zéro ?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Cette action réinitialisera toute votre progression, vos leçons complétées et vos favoris comme si l'application venait tout juste d'être installée. Toutes les 25 unités resteront déverrouillées."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetConfirmDialog = false
+                        onResetProgress()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = JapanRedPrimary)
+                ) {
+                    Text("Oui, tout réinitialiser", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
 
     Scaffold(
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
-                title = { Text("Motivation & Statistiques", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text("Options & Réglages", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
@@ -102,97 +125,6 @@ fun StatsStreakScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Streak Big Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0xFFFFF7ED), Color(0xFFFEF2F2))
-                                )
-                            )
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "🔥", fontSize = 64.sp)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "${userStats.streakDays} Jours de Série !",
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Black,
-                                color = StreakOrange
-                            )
-                            Text(
-                                text = "Revenez chaque jour pour faire vivre la flamme !",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Spacer(modifier = Modifier.height(18.dp))
-
-                            // 7 Days Week Ribbon
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                val days = listOf("L", "M", "M", "J", "V", "S", "D")
-                                days.forEachIndexed { i, dayName ->
-                                    val isDayActive = i < minOf(userStats.streakDays, 7)
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(text = dayName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.outline)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(if (isDayActive) StreakOrange else Color(0xFFE2E8F0)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = if (isDayActive) "✓" else "",
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Stats Grid
-            item {
-                Text(text = "Vos Statistiques", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val accuracy = if (userStats.totalQuestionsAnswered > 0) {
-                    ((userStats.correctAnswers.toFloat() / userStats.totalQuestionsAnswered) * 100).toInt()
-                } else 100
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatCard(title = "Total XP", value = "${userStats.totalXp}", icon = "⚡", color = GoldenYellow, modifier = Modifier.weight(1f))
-                    StatCard(title = "Précision", value = "$accuracy%", icon = "🎯", color = MatchaGreen, modifier = Modifier.weight(1f))
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatCard(title = "Leçons réussies", value = "${userStats.completedLessonIds.size}/25", icon = "📖", color = JapanRedPrimary, modifier = Modifier.weight(1f))
-                    StatCard(title = "Mots maîtrisés", value = "${userStats.masteredWordIds.size}", icon = "🎴", color = Color(0xFF6366F1), modifier = Modifier.weight(1f))
-                }
-            }
-
             // Daily Notification Reminder Settings
             item {
                 Card(
@@ -208,24 +140,159 @@ fun StatsStreakScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = JapanRedPrimary)
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFEE2E2)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = JapanRedPrimary)
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text(text = "Rappel Quotidien", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text(text = "Notification chaque jour à 19h00", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(text = "Rappel Quotidien", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    val formattedTime = String.format("%02dh%02d", selectedHour, selectedMinute)
+                                    Text(
+                                        text = if (reminderEnabled) "Programmé chaque jour à $formattedTime" else "Rappels désactivés",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                             Switch(
                                 checked = reminderEnabled,
                                 onCheckedChange = {
                                     reminderEnabled = it
-                                    onUpdateReminder(it, 19, 0)
+                                    onUpdateReminder(it, selectedHour, selectedMinute)
                                 }
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        if (reminderEnabled) {
+                            Spacer(modifier = Modifier.height(16.dp))
 
+                            Text(
+                                text = "Choisissez l'heure de rappel :",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Quick preset times
+                            val presets = listOf(
+                                Pair(8, 0) to "08:00 (Matin)",
+                                Pair(12, 30) to "12:30 (Midi)",
+                                Pair(18, 0) to "18:00 (Soir)",
+                                Pair(19, 0) to "19:00 (Défaut)",
+                                Pair(20, 30) to "20:30 (Nuit)",
+                                Pair(21, 0) to "21:00 (Tard)"
+                            )
+
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                presets.chunked(3).forEach { rowPresets ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        rowPresets.forEach { (time, label) ->
+                                            val isSelected = selectedHour == time.first && selectedMinute == time.second
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    selectedHour = time.first
+                                                    selectedMinute = time.second
+                                                    onUpdateReminder(true, time.first, time.second)
+                                                },
+                                                label = {
+                                                    Text(
+                                                        text = label,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                    )
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Precise Hour & Minute Adjuster
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Heure personnalisée :",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Hour -
+                                    IconButton(
+                                        onClick = {
+                                            selectedHour = if (selectedHour <= 0) 23 else selectedHour - 1
+                                            onUpdateReminder(true, selectedHour, selectedMinute)
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Text("-", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                    }
+
+                                    Text(
+                                        text = String.format("%02d", selectedHour),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    )
+
+                                    // Hour +
+                                    IconButton(
+                                        onClick = {
+                                            selectedHour = (selectedHour + 1) % 24
+                                            onUpdateReminder(true, selectedHour, selectedMinute)
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Text("+", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                    }
+
+                                    Text(text = " : ", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+
+                                    // Minute Toggle (00, 15, 30, 45)
+                                    Button(
+                                        onClick = {
+                                            selectedMinute = (selectedMinute + 15) % 60
+                                            onUpdateReminder(true, selectedHour, selectedMinute)
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(32.dp),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = String.format("%02d min", selectedMinute),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Test Notification Button
                         Button(
                             onClick = {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -234,13 +301,13 @@ fun StatsStreakScreen(
                                         Manifest.permission.POST_NOTIFICATIONS
                                     ) == PackageManager.PERMISSION_GRANTED
                                     if (hasPerm) {
-                                        DailyNotificationHelper.showDailyStreakReminder(context, userStats.streakDays)
+                                        DailyNotificationHelper.showDailyReminderNotification(context)
                                         notificationSentFeedback = true
                                     } else {
                                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 } else {
-                                    DailyNotificationHelper.showDailyStreakReminder(context, userStats.streakDays)
+                                    DailyNotificationHelper.showDailyReminderNotification(context)
                                     notificationSentFeedback = true
                                 }
                             },
@@ -257,87 +324,217 @@ fun StatsStreakScreen(
                                 fontSize = 13.sp
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "ℹ️ L'application est optimisée pour ne pas encombrer votre barre d'état. Les notifications s'effacent automatiquement dès que vous cliquez dessus.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 15.sp
+                        )
                     }
                 }
             }
 
             // Display Preferences: Alphabet Latin (Romaji) & Furigana
             item {
-                Text(text = "Affichage & Furigana", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Tous les kanji de l'application affichent des furigana. Choisissez où afficher l'alphabet latin (Romaji) :",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                RomajiModeSelectorBar(
-                    currentMode = userStats.romajiDisplayMode,
-                    onModeSelected = onUpdateRomajiMode,
-                    modifier = Modifier.padding(horizontal = 0.dp)
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            // Achievements
-            item {
-                Text(text = "Succès & Trophées", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            items(achievements.size) { idx ->
-                val ach = achievements[idx]
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Affichage du Romaji & Furigana",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Choisissez comment les kana et kanji sont affichés dans les leçons et les révisions.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        RomajiModeSelectorBar(
+                            currentMode = userStats.romajiDisplayMode,
+                            onModeSelected = onUpdateRomajiMode
+                        )
+                    }
+                }
+            }
+
+            // Audio Preferences: Prononciation automatique des mots japonais
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (userStats.autoPronounceWords) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Prononciation automatique",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = if (userStats.autoPronounceWords) "Lecture audio active" else "Lecture audio désactivée",
+                                        fontSize = 12.sp,
+                                        color = if (userStats.autoPronounceWords) Color(0xFF059669) else MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                            }
+
+                            Switch(
+                                checked = userStats.autoPronounceWords,
+                                onCheckedChange = onToggleAutoPronounce,
+                                modifier = Modifier.testTag("switch_auto_pronounce"),
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = JapanRedPrimary
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Prononce automatiquement les mots japonais, phrases et questions lors des exercices, quiz et conversations IA. Les boutons d'écoute manuelle restent toujours disponibles.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+
+            // Course Learning Statistics (clean learning stats without gamification)
+            item {
+                Text(
+                    text = "Bilan d'apprentissage",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            item {
+                val accuracy = if (userStats.totalQuestionsAnswered > 0) {
+                    ((userStats.correctAnswers.toFloat() / userStats.totalQuestionsAnswered) * 100).toInt()
+                } else 100
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatCard(
+                        title = "Leçons terminées",
+                        value = "${userStats.completedLessonIds.size} / 25",
+                        icon = "📖",
+                        color = JapanRedPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "Précision globale",
+                        value = "$accuracy%",
+                        icon = "🎯",
+                        color = MatchaGreen,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatCard(
+                        title = "Questions traitées",
+                        value = "${userStats.totalQuestionsAnswered}",
+                        icon = "✏️",
+                        color = Color(0xFF6366F1),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "Favoris sauvegardés",
+                        value = "${userStats.bookmarkedWordIds.size}",
+                        icon = "⭐",
+                        color = Color(0xFFF59E0B),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Reset to factory zero
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFECDD3))),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(if (ach.isUnlocked) Color(0xFFFEF3C7) else Color(0xFFF1F5F9)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = ach.emoji, fontSize = 22.sp)
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, tint = JapanRedPrimary)
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = ach.title,
+                                text = "Remise à zéro de l'application",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = if (ach.isUnlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = ach.description,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            LinearProgressIndicator(
-                                progress = { ach.progress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp)),
-                                color = if (ach.isUnlocked) MatchaGreen else GoldenYellow,
-                                trackColor = Color(0xFFE2E8F0)
+                                color = JapanRedPrimary
                             )
                         }
-
-                        if (ach.isUnlocked) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Efface l'historique de complétion et remet l'application à zéro comme au premier téléchargement.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { showResetConfirmDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("reset_app_button"),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = JapanRedPrimary)
+                        ) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "⭐", fontSize = 18.sp)
+                            Text(
+                                text = "Remettre l'application à zéro",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
                         }
                     }
                 }
@@ -361,22 +558,10 @@ fun StatCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = icon, fontSize = 20.sp)
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                )
-            }
+            Text(text = icon, fontSize = 22.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-            Text(text = title, fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+            Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = color)
+            Text(text = title, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

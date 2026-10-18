@@ -103,12 +103,24 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         repository.updateRomajiDisplayMode(mode)
     }
 
+    fun updateAutoPronounce(enabled: Boolean) {
+        repository.updateAutoPronounce(enabled)
+    }
+
     fun toggleMasterKana(kana: String) {
         repository.toggleMasterKana(kana)
     }
 
+    fun toggleMasterKanji(kanji: String) {
+        repository.toggleMasterKanji(kanji)
+    }
+
     fun speak(text: String) {
         ttsManager.speak(text)
+    }
+
+    fun resetAllProgress() {
+        repository.resetAllProgress()
     }
 
     override fun onCleared() {

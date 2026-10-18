@@ -53,6 +53,7 @@ fun ExerciseScreen(
     onLoseLife: () -> Boolean,
     currentLives: Int,
     romajiMode: com.example.data.model.RomajiDisplayMode = com.example.data.model.RomajiDisplayMode.BOTH,
+    autoPronounceEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -105,8 +106,13 @@ fun ExerciseScreen(
         isChecked = false
 
         val ex = exercises.getOrNull(currentIndex)
-        if (ex?.type == ExerciseType.LISTENING_SELECT && ex.audioText != null) {
-            onSpeak(ex.audioText)
+        val textToSpeak = ex?.audioText 
+            ?: if (ex?.type == ExerciseType.SPEECH_PRONUNCIATION) ex.targetSentenceJp 
+            else if (!ex?.promptJp.isNullOrBlank()) ex?.promptJp 
+            else null
+
+        if (autoPronounceEnabled && !textToSpeak.isNullOrBlank()) {
+            onSpeak(textToSpeak)
         }
     }
 
@@ -195,16 +201,12 @@ fun ExerciseScreen(
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "❤️", fontSize = 16.sp)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "$currentLives",
-                            fontWeight = FontWeight.Bold,
-                            color = JapanRedPrimary,
-                            fontSize = 16.sp
-                        )
-                    }
+                    Text(
+                        text = "${currentIndex + 1} / ${exercises.size}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 if (targetSection == com.example.data.model.ChapterSectionType.REVISION) {
@@ -263,7 +265,6 @@ fun ExerciseScreen(
                                     correctCount++
                                     com.example.service.SoundEffectsManager.playCorrectSound()
                                 } else {
-                                    onLoseLife()
                                     com.example.service.SoundEffectsManager.playIncorrectSound()
                                 }
                             },
@@ -748,8 +749,8 @@ fun ExerciseVictoryCard(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     ScoreStatBadge(label = "Précision", value = "${((correctCount.toFloat() / totalCount.toFloat()) * 100).toInt()}%", icon = "🎯")
-                    ScoreStatBadge(label = "Gain XP", value = "+25 XP", icon = "⚡")
-                    ScoreStatBadge(label = "Série", value = "+1 Jour", icon = "🔥")
+                    ScoreStatBadge(label = "Réussite", value = "$correctCount / $totalCount", icon = "✅")
+                    ScoreStatBadge(label = "Statut", value = if (correctCount >= totalCount * 0.7f) "Validé" else "À revoir", icon = "📖")
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

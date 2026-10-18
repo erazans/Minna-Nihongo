@@ -29,3 +29,23 @@ data class KanaCharacter(
     val exampleWordRomaji: String = "",
     val exampleWordFr: String = ""
 )
+
+data class KanjiExample(
+    val wordJp: String,
+    val readingKana: String,
+    val romaji: String,
+    val meaningFr: String
+)
+
+data class KanjiCharacter(
+    val kanji: String,
+    val meaningFr: String,
+    val onyomi: String,
+    val kunyomi: String,
+    val strokeCount: Int,
+    val lessonId: Int, // Lesson in Minna no Nihongo
+    val categoryFr: String,
+    val mnemonicFr: String,
+    val examples: List<KanjiExample>
+)
+

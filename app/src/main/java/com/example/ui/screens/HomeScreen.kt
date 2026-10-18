@@ -47,78 +47,43 @@ fun HomeScreen(
     onOpenGlossary: () -> Unit,
     onOpenStats: () -> Unit,
     onRefillLives: () -> Unit,
-    onUpdateRomajiMode: ((com.example.data.model.RomajiDisplayMode) -> Unit)? = null,
+    bottomBar: @Composable () -> Unit = {
+        com.example.ui.components.AppBottomNavigationBar(
+            currentScreen = com.example.ui.viewmodel.AppScreen.HOME,
+            onNavigate = { screen ->
+                when (screen) {
+                    com.example.ui.viewmodel.AppScreen.HOME -> {}
+                    com.example.ui.viewmodel.AppScreen.KANA_STUDY -> onOpenKanaStudy()
+                    com.example.ui.viewmodel.AppScreen.GLOSSARY -> onOpenGlossary()
+                    com.example.ui.viewmodel.AppScreen.AI_CONVERSATION -> onOpenAiConversation()
+                    com.example.ui.viewmodel.AppScreen.STATS -> onOpenStats()
+                    else -> {}
+                }
+            }
+        )
+    },
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         topBar = {
-            TopAppHeader(
-                streakDays = userStats.streakDays,
-                todayXp = userStats.todayXp,
-                dailyGoalXp = userStats.dailyGoalXp,
-                lives = userStats.lives,
-                onStreakClick = onOpenStats,
-                onRefillLivesClick = onRefillLives
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onOpenAiConversation,
-                containerColor = JapanRedPrimary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.testTag("fab_ai_sensei")
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Pratiquer avec l'IA",
-                    fontWeight = FontWeight.Bold
+            Column(modifier = Modifier.fillMaxWidth().background(Color.Black)) {
+                // Barre noire physique en haut du menu principal pour éviter le chevauchement avec la barre de notification et l'appareil photo/poinçon
+                val statusBarInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                val topBarHeight = maxOf(statusBarInset, 36.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(topBarHeight)
+                        .background(Color.Black)
+                )
+                TopAppHeader(
+                    completedUnitsCount = userStats.completedLessonIds.size,
+                    totalUnitsCount = lessons.size,
+                    onSettingsClick = onOpenStats
                 )
             }
         },
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { /* Already on Learn */ },
-                    icon = { Icon(Icons.Default.School, contentDescription = "Cours") },
-                    label = { Text("Parcours") },
-                    modifier = Modifier.testTag("nav_home_button")
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenKanaStudy,
-                    icon = { Icon(Icons.Default.Translate, contentDescription = "Kana") },
-                    label = { Text("Kana あ/ア") },
-                    modifier = Modifier.testTag("nav_kana_button")
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenGlossary,
-                    icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Glossaire") },
-                    label = { Text("Glossaire") },
-                    modifier = Modifier.testTag("nav_glossary_button")
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenAiConversation,
-                    icon = { Icon(Icons.Default.Psychology, contentDescription = "IA Oral") },
-                    label = { Text("Tuteur IA") },
-                    modifier = Modifier.testTag("nav_ai_button")
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenStats,
-                    icon = { Icon(Icons.Default.Whatshot, contentDescription = "Streak & Stats") },
-                    label = { Text("Série 🔥") },
-                    modifier = Modifier.testTag("nav_stats_button")
-                )
-            }
-        },
+        bottomBar = bottomBar,
         modifier = modifier
     ) { paddingValues ->
         LazyColumn(
@@ -127,10 +92,9 @@ fun HomeScreen(
                 .padding(paddingValues),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
-            // Hero Motivation Banner
+            // Course Progression Banner
             item {
                 MotivationalHeroBanner(
-                    streak = userStats.streakDays,
                     completedCount = userStats.completedLessonIds.size,
                     totalLessons = lessons.size,
                     onOpenStats = onOpenStats
@@ -142,8 +106,7 @@ fun HomeScreen(
                 KanaLearningBannerCard(
                     masteredCount = userStats.masteredKana.size,
                     romajiMode = userStats.romajiDisplayMode,
-                    onOpenKana = onOpenKanaStudy,
-                    onUpdateRomajiMode = onUpdateRomajiMode
+                    onOpenKana = onOpenKanaStudy
                 )
             }
 
@@ -366,7 +329,6 @@ fun SectionProgressChip(
 
 @Composable
 fun MotivationalHeroBanner(
-    streak: Int,
     completedCount: Int,
     totalLessons: Int,
     onOpenStats: () -> Unit
@@ -402,23 +364,21 @@ fun MotivationalHeroBanner(
                     modifier = Modifier
                         .size(54.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFFFEDD5)),
+                        .background(Color(0xFFFEE2E2)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🔥", fontSize = 28.sp)
+                    Text(text = "⛩️", fontSize = 26.sp)
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Série de $streak jours !",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    Text(
+                        text = "Progression du Manuel",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Minna no Nihongo : $completedCount/$totalLessons unités validées",
@@ -445,8 +405,7 @@ fun MotivationalHeroBanner(
 fun KanaLearningBannerCard(
     masteredCount: Int,
     romajiMode: com.example.data.model.RomajiDisplayMode,
-    onOpenKana: () -> Unit,
-    onUpdateRomajiMode: ((com.example.data.model.RomajiDisplayMode) -> Unit)? = null
+    onOpenKana: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -483,7 +442,7 @@ fun KanaLearningBannerCard(
                             .background(Color(0xFFDBEAFE)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "あア", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color(0xFF1D4ED8))
+                        Text(text = "あ時", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF1D4ED8))
                     }
 
                     Spacer(modifier = Modifier.width(14.dp))
@@ -491,7 +450,7 @@ fun KanaLearningBannerCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Hiragana & Katakana",
+                                text = "Kana, Kanji, Heures & Nombres",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -499,7 +458,7 @@ fun KanaLearningBannerCard(
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "46 Hiragana + 46 Katakana • Tracés & Quiz",
+                            text = "Kana, Kanji, Chiffres & Heures (Particularités L.4)",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -521,51 +480,17 @@ fun KanaLearningBannerCard(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.White.copy(alpha = 0.9f)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.clickable {
-                            val nextMode = when (romajiMode) {
-                                com.example.data.model.RomajiDisplayMode.NONE -> com.example.data.model.RomajiDisplayMode.HIRAGANA_ONLY
-                                com.example.data.model.RomajiDisplayMode.HIRAGANA_ONLY -> com.example.data.model.RomajiDisplayMode.KATAKANA_ONLY
-                                com.example.data.model.RomajiDisplayMode.KATAKANA_ONLY -> com.example.data.model.RomajiDisplayMode.BOTH
-                                com.example.data.model.RomajiDisplayMode.BOTH -> com.example.data.model.RomajiDisplayMode.NONE
-                            }
-                            onUpdateRomajiMode?.invoke(nextMode)
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "🔤 Latin : ", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                            Text(
-                                text = romajiMode.labelFr.substringBefore(" ("),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D4ED8)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(text = "↺", fontSize = 11.sp, color = Color(0xFF1D4ED8))
-                        }
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.8f)
-                    ) {
-                        Text(
-                            text = "✓ $masteredCount maîtrisés",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MatchaGreen,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                    Text(
+                        text = "✓ $masteredCount kana maîtrisés",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1D4ED8),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
                 }
             }
         }

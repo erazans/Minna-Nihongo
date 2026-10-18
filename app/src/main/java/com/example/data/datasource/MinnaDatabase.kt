@@ -17,8 +17,8 @@ object MinnaDatabase {
             wordsCount = 38,
             grammarPointsCount = 6,
             isUnlocked = true,
-            isCompleted = true,
-            stars = 3
+            isCompleted = false,
+            stars = 0
         ),
         Lesson(
             id = 2,
@@ -33,7 +33,7 @@ object MinnaDatabase {
             grammarPointsCount = 5,
             isUnlocked = true,
             isCompleted = false,
-            stars = 1
+            stars = 0
         ),
         Lesson(
             id = 3,

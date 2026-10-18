@@ -28,7 +28,6 @@ import com.example.data.model.RomajiDisplayMode
 import com.example.data.model.VocabularyWord
 import com.example.ui.components.JapaneseAudioButton
 import com.example.ui.components.JapaneseFuriganaText
-import com.example.ui.components.RomajiModeSelectorBar
 import com.example.ui.theme.JapanRedPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +41,6 @@ fun LessonDetailScreen(
     bookmarkedWords: Set<String>,
     onToggleBookmark: (String) -> Unit,
     romajiMode: RomajiDisplayMode = RomajiDisplayMode.BOTH,
-    onUpdateRomajiMode: (RomajiDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -234,11 +232,7 @@ fun LessonDetailScreen(
                 }
             }
 
-            // Latin alphabet display options bar
-            RomajiModeSelectorBar(
-                currentMode = romajiMode,
-                onModeSelected = onUpdateRomajiMode
-            )
+
 
             // Tab Content
             when (selectedTabIndex) {

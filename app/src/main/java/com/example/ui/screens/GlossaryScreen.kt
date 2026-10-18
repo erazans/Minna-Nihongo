@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -29,7 +30,6 @@ import com.example.data.model.VocabularyWord
 import com.example.data.model.WordCategory
 import com.example.ui.components.JapaneseAudioButton
 import com.example.ui.components.JapaneseFuriganaText
-import com.example.ui.components.RomajiModeSelectorBar
 import com.example.ui.theme.GoldenYellow
 import com.example.ui.theme.JapanRedPrimary
 import com.example.ui.theme.MatchaGreen
@@ -44,7 +44,8 @@ fun GlossaryScreen(
     onToggleBookmark: (String) -> Unit,
     onToggleMastered: (String) -> Unit,
     romajiMode: RomajiDisplayMode = RomajiDisplayMode.BOTH,
-    onUpdateRomajiMode: (RomajiDisplayMode) -> Unit = {},
+    autoPronounceEnabled: Boolean = true,
+    bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -54,6 +55,7 @@ fun GlossaryScreen(
 
     val allWords = MinnaDatabase.vocabulary
     val allGrammar = MinnaDatabase.grammarPoints
+    val allParticles = com.example.data.datasource.MinnaParticlesData.allParticles
 
     val filteredWords = remember(searchQuery, selectedCategory, onlyBookmarks, bookmarkedWordIds) {
         allWords.filter { word ->
@@ -81,7 +83,20 @@ fun GlossaryScreen(
         }
     }
 
+    val filteredParticles = remember(searchQuery) {
+        allParticles.filter { p ->
+            searchQuery.isBlank() ||
+                    p.name.contains(searchQuery, ignoreCase = true) ||
+                    p.romaji.contains(searchQuery, ignoreCase = true) ||
+                    p.meaningFr.contains(searchQuery, ignoreCase = true) ||
+                    p.functionFr.contains(searchQuery, ignoreCase = true) ||
+                    p.lessonReference.contains(searchQuery, ignoreCase = true) ||
+                    p.nuancesFr.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     Scaffold(
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
                 title = {
@@ -111,49 +126,111 @@ fun GlossaryScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+            // Compact Single-Line Search Bar
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .testTag("glossary_search_input"),
-                placeholder = { Text("Rechercher (kanji, romaji, français, leçon...)") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Effacer")
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("glossary_search_input"),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 13.sp
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Rechercher un mot, verbe, kanji, leçon...",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Effacer",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
                         }
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp)
-            )
+                }
+            }
 
-            // Tabs: Vocabulaire vs Grammaire
-            TabRow(
+            // Tabs: Vocabulaire, Verbes, Grammaire, Particules, Révisions & Heures/Nombres
+            val totalVerbsCount = remember { com.example.data.datasource.MinnaVerbData.allVerbs.size }
+            ScrollableTabRow(
                 selectedTabIndex = selectedTab,
+                edgePadding = 8.dp,
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Vocabulaire (${filteredWords.size})", fontWeight = FontWeight.Bold) }
+                    text = { Text("Vocabulaire (${filteredWords.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_vocab")
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Grammaire (${filteredGrammar.size})", fontWeight = FontWeight.Bold) }
+                    text = { Text("🥋 Verbes ($totalVerbsCount)", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_verbs")
+                )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Grammaire (${filteredGrammar.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_grammar")
+                )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("Particules (${filteredParticles.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_particles")
+                )
+                Tab(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 },
+                    text = { Text("🔄 Révisions (復習)", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_reviews")
+                )
+                Tab(
+                    selected = selectedTab == 5,
+                    onClick = { selectedTab = 5 },
+                    text = { Text("⏰ Heures & Nombres", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                    modifier = Modifier.testTag("tab_hours_numbers")
                 )
             }
-
-            // Latin alphabet display options bar
-            RomajiModeSelectorBar(
-                currentMode = romajiMode,
-                onModeSelected = onUpdateRomajiMode
-            )
 
             if (selectedTab == 0) {
                 // Category Filter Chips
@@ -299,7 +376,16 @@ fun GlossaryScreen(
                         }
                     }
                 }
-            } else {
+            } else if (selectedTab == 1) {
+                // Verbes avec toutes leurs déclinaisons et conjugaisons
+                VerbGlossaryContent(
+                    searchQuery = searchQuery,
+                    bookmarkedWordIds = bookmarkedWordIds,
+                    onToggleBookmark = onToggleBookmark,
+                    onSpeak = onSpeak,
+                    romajiMode = romajiMode
+                )
+            } else if (selectedTab == 2) {
                 // Grammar List
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -381,6 +467,176 @@ fun GlossaryScreen(
                         }
                     }
                 }
+            } else if (selectedTab == 3) {
+                // Particles List (助詞)
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(filteredParticles) { p ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                                Text(
+                                                    text = "${p.name} [${p.romaji}]",
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 18.sp,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        JapaneseAudioButton(
+                                            textToSpeak = p.name,
+                                            onSpeak = onSpeak,
+                                            size = 34
+                                        )
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Text(
+                                            text = p.lessonReference,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = p.meaningFr,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = p.functionFr,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 18.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+                                // Formula Box
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFFEF3C7))
+                                        .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(8.dp))
+                                        .padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = "💡 Formule : ${p.formula}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF92400E)
+                                    )
+                                }
+
+                                if (p.nuancesFr.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFFEFF6FF))
+                                            .border(1.dp, Color(0xFFDBEAFE), RoundedCornerShape(8.dp))
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "🔍 Nuance clé : ${p.nuancesFr}",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF1E40AF),
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+
+                                if (p.examples.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "Exemples du manuel :",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        p.examples.forEach { ex ->
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        JapaneseFuriganaText(
+                                                            text = ex.jp,
+                                                            romajiMode = romajiMode,
+                                                            fontSize = 13.sp,
+                                                            rubySize = 8.sp,
+                                                            romajiSize = 9.sp,
+                                                            textColor = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        Text(
+                                                            text = ex.fr,
+                                                            fontSize = 12.sp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                    JapaneseAudioButton(
+                                                        textToSpeak = ex.jp,
+                                                        onSpeak = onSpeak,
+                                                        size = 30
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == 4) {
+                // Leçons de Révision (復習)
+                GlossaryReviewContent(
+                    onSpeak = onSpeak,
+                    romajiMode = romajiMode,
+                    autoPronounceEnabled = autoPronounceEnabled
+                )
+            } else if (selectedTab == 5) {
+                // Heures & Nombres with particularities
+                NumbersTimeStudyContent(
+                    onSpeak = onSpeak
+                )
             }
         }
     }

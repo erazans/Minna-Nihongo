@@ -51,6 +51,8 @@ fun AiConversationScreen(
     onSpeak: (String) -> Unit,
     onAddXp: (Int) -> Unit,
     romajiMode: RomajiDisplayMode = RomajiDisplayMode.BOTH,
+    autoPronounceEnabled: Boolean = true,
+    bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -130,8 +132,10 @@ fun AiConversationScreen(
             isLoading = false
             listState.animateScrollToItem(messages.size - 1)
 
-            // Auto-speak response in Japanese
-            onSpeak(response.japanese)
+            // Auto-speak response in Japanese if enabled
+            if (autoPronounceEnabled) {
+                onSpeak(response.japanese)
+            }
         }
     }
 
@@ -170,11 +174,12 @@ fun AiConversationScreen(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                     // Suggested reply chips
                     LazyRow(
@@ -275,7 +280,9 @@ fun AiConversationScreen(
                     }
                 }
             }
-        },
+            bottomBar()
+        }
+    },
         modifier = modifier
     ) { paddingValues ->
         Column(

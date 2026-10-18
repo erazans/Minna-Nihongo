@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.example.ui.viewmodel.AppScreen
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,12 +30,9 @@ import com.example.ui.theme.StreakOrange
 
 @Composable
 fun TopAppHeader(
-    streakDays: Int,
-    todayXp: Int,
-    dailyGoalXp: Int,
-    lives: Int,
-    onStreakClick: () -> Unit,
-    onRefillLivesClick: () -> Unit,
+    completedUnitsCount: Int = 0,
+    totalUnitsCount: Int = 25,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -48,65 +47,37 @@ fun TopAppHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Streak Flame Button
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onStreakClick() }
-                    .background(Color(0xFFFFF7ED))
-                    .border(1.dp, Color(0xFFFFEDD5), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .testTag("streak_header_button"),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "🔥", fontSize = 18.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "$streakDays",
-                    fontWeight = FontWeight.Bold,
-                    color = StreakOrange,
-                    fontSize = 15.sp
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "⛩️", fontSize = 20.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Minna no Nihongo",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "みんなの日本語 • Leçons 1 à 25",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            // Daily XP goal
-            Row(
+            // Quick options & settings button
+            IconButton(
+                onClick = onSettingsClick,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFEFCE8))
-                    .border(1.dp, Color(0xFFFEF08A), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .testTag("xp_header_badge"),
-                verticalAlignment = Alignment.CenterVertically
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    .testTag("settings_header_button")
             ) {
-                Text(text = "⚡", fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "$todayXp/$dailyGoalXp XP",
-                    fontWeight = FontWeight.Bold,
-                    color = GoldenYellow,
-                    fontSize = 14.sp
-                )
-            }
-
-            // Hearts / Lives
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onRefillLivesClick() }
-                    .background(Color(0xFFFFF1F2))
-                    .border(1.dp, Color(0xFFFFE4E6), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .testTag("lives_header_button"),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "❤️", fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "$lives",
-                    fontWeight = FontWeight.Bold,
-                    color = JapanRedPrimary,
-                    fontSize = 15.sp
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Options & Réglages",
+                    tint = JapanRedPrimary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -280,3 +251,63 @@ fun DuolingoFeedbackSheet(
         }
     }
 }
+
+@Composable
+fun AppBottomNavigationBar(
+    currentScreen: AppScreen,
+    onNavigate: (AppScreen) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp,
+        modifier = modifier
+    ) {
+        NavigationBarItem(
+            selected = currentScreen == AppScreen.HOME,
+            onClick = {
+                if (currentScreen != AppScreen.HOME) onNavigate(AppScreen.HOME)
+            },
+            icon = { Icon(Icons.Default.School, contentDescription = "Parcours") },
+            label = { Text("Parcours") },
+            modifier = Modifier.testTag("nav_home_button")
+        )
+        NavigationBarItem(
+            selected = currentScreen == AppScreen.KANA_STUDY,
+            onClick = {
+                if (currentScreen != AppScreen.KANA_STUDY) onNavigate(AppScreen.KANA_STUDY)
+            },
+            icon = { Icon(Icons.Default.Translate, contentDescription = "Kana & Kanji") },
+            label = { Text("Kana/Kanji") },
+            modifier = Modifier.testTag("nav_kana_button")
+        )
+        NavigationBarItem(
+            selected = currentScreen == AppScreen.GLOSSARY,
+            onClick = {
+                if (currentScreen != AppScreen.GLOSSARY) onNavigate(AppScreen.GLOSSARY)
+            },
+            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Glossaire") },
+            label = { Text("Glossaire") },
+            modifier = Modifier.testTag("nav_glossary_button")
+        )
+        NavigationBarItem(
+            selected = currentScreen == AppScreen.AI_CONVERSATION,
+            onClick = {
+                if (currentScreen != AppScreen.AI_CONVERSATION) onNavigate(AppScreen.AI_CONVERSATION)
+            },
+            icon = { Icon(Icons.Default.Psychology, contentDescription = "Tuteur IA") },
+            label = { Text("Tuteur IA") },
+            modifier = Modifier.testTag("nav_ai_button")
+        )
+        NavigationBarItem(
+            selected = currentScreen == AppScreen.STATS,
+            onClick = {
+                if (currentScreen != AppScreen.STATS) onNavigate(AppScreen.STATS)
+            },
+            icon = { Icon(Icons.Default.Settings, contentDescription = "Options") },
+            label = { Text("Options") },
+            modifier = Modifier.testTag("nav_options_button")
+        )
+    }
+}
+

@@ -40,13 +40,17 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `verify user repository streak and xp`() {
+    fun `verify user repository bookmarks and kana mastery`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repo = LearningRepository(context)
 
-        val initialXp = repo.userStats.value.totalXp
-        repo.addXp(20)
-        assertEquals(initialXp + 20, repo.userStats.value.totalXp)
+        repo.toggleBookmarkWord("word_test_1")
+        assertTrue(repo.userStats.value.bookmarkedWordIds.contains("word_test_1"))
+        repo.toggleBookmarkWord("word_test_1")
+        assertTrue(!repo.userStats.value.bookmarkedWordIds.contains("word_test_1"))
+
+        repo.toggleMasterKana("あ")
+        assertTrue(repo.userStats.value.masteredKana.contains("あ"))
     }
 
     @Test
@@ -81,5 +85,33 @@ class ExampleRobolectricTest {
             val words = vocab.filter { it.lessonId == lessonId }
             assertTrue("La leçon $lessonId doit contenir du vocabulaire", words.isNotEmpty())
         }
+    }
+
+    @Test
+    fun `verify minna verbs data and declensions`() {
+        val verbs = com.example.data.datasource.MinnaVerbData.allVerbs
+        assertEquals(105, verbs.size)
+
+        // Verify key verbs have correct conjugations
+        val taberu = verbs.find { it.masuKanji == "食べます" }
+        assertNotNull(taberu)
+        assertEquals("食べる", taberu?.dictionaryKanji)
+        assertEquals("食べて", taberu?.teForm?.kanji)
+        assertEquals("食べた", taberu?.taForm?.kanji)
+        assertEquals("食べない", taberu?.naiForm?.kanji)
+        assertEquals(com.example.data.model.VerbGroup.GROUP_2, taberu?.group)
+
+        val iku = verbs.find { it.masuKanji == "行きます" }
+        assertNotNull(iku)
+        assertEquals("行く", iku?.dictionaryKanji)
+        assertEquals("行って", iku?.teForm?.kanji)
+        assertEquals(com.example.data.model.VerbGroup.GROUP_1, iku?.group)
+
+        val kuru = verbs.find { it.masuKanji == "来ます" }
+        assertNotNull(kuru)
+        assertEquals("来る", kuru?.dictionaryKanji)
+        assertEquals("来て", kuru?.teForm?.kanji)
+        assertEquals("来ない", kuru?.naiForm?.kanji)
+        assertEquals(com.example.data.model.VerbGroup.GROUP_3, kuru?.group)
     }
 }
