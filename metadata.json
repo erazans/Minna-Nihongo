@@ -1,0 +1,8 @@
+{
+  "name": "Minna Nihongo",
+  "description": "Application complète d'apprentissage du japonais basée sur Minna no Nihongo (Leçons 1 à 25) avec cours, exercices oraux et écrits, reconnaissance vocale, IA conversationnelle, glossaire et suivi de streak quotidien.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

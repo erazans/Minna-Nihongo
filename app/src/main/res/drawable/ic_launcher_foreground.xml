@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Red Sun Disk -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M54,50m-16,0a16,16 0 1,0 32,0a16,16 0 1,0 -32,0" />
+
+    <!-- Torii Gate Top Curved Beam (Kasagi) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,34 Q54,31 80,34 L82,37 Q54,34 26,37 Z" />
+
+    <!-- Torii Gate Second Straight Beam (Shimaki & Nuki) -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M31,41 L77,41 L77,44 L31,44 Z" />
+
+    <!-- Torii Gate Pillars (Hashira) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,37 L40,37 L42,76 L38,76 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,37 L68,37 L66,76 L70,76 Z" />
+
+    <!-- Torii Gate Central strut (Gakuzuka) -->
+    <path
+        android:fillColor="#FCD34D"
+        android:pathData="M52.5,35 L55.5,35 L55.5,41 L52.5,41 Z" />
+
+    <!-- Cherry Blossom Petals -->
+    <path
+        android:fillColor="#FDA4AF"
+        android:pathData="M33,48 Q37,45 38,50 Q35,53 33,48 Z" />
+    <path
+        android:fillColor="#FDA4AF"
+        android:pathData="M75,52 Q79,49 80,54 Q77,57 75,52 Z" />
+    <path
+        android:fillColor="#FECDD3"
+        android:pathData="M48,64 Q52,61 53,66 Q50,69 48,64 Z" />
+</vector>
