@@ -2,12 +2,14 @@ package com.example.service
 
 import android.media.AudioAttributes
 import android.media.AudioFormat
-import android.media.AudioTrack
 import android.media.AudioManager
+import android.media.AudioTrack
 import android.media.ToneGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.exp
 import kotlin.math.sin
 
 object SoundEffectsManager {
@@ -17,115 +19,229 @@ object SoundEffectsManager {
 
     init {
         try {
-            toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
-        } catch (e: Throwable) {
+            toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 85)
+        } catch (_: Throwable) {
             // ToneGenerator fallback
         }
     }
 
     /**
-     * Joyful ascending chime for correct answers (Duolingo style: E5 -> A5)
+     * Données d'une note polyphonique avec enveloppe de cloche cristalline (style Duolingo)
+     */
+    private data class ChimeNote(
+        val frequency: Float,
+        val startMs: Int,
+        val durationMs: Int,
+        val amplitude: Float = 1.0f,
+        val decayRate: Float = 5.2f,
+        val brightHarmonics: Boolean = true
+    )
+
+    /**
+     * Son de bonne réponse ultra-clair et cristallin (style Duolingo : double carillon ascendant B5 -> E6
+     * avec harmoniques de célesta/marimba et résonance polyphonique).
      */
     fun playCorrectSound() {
         scope.launch {
             try {
-                // Play harmonic two-tone chime
-                playTones(
+                playPolyphonicChime(
                     listOf(
-                        Tone(frequency = 659.25f, durationMs = 90),  // E5
-                        Tone(frequency = 880.00f, durationMs = 180)  // A5
+                        // 1ère note : attaque vive et claire (B5 + corps harmonique E5)
+                        ChimeNote(
+                            frequency = 987.77f, // B5
+                            startMs = 0,
+                            durationMs = 240,
+                            amplitude = 0.78f,
+                            decayRate = 5.8f,
+                            brightHarmonics = true
+                        ),
+                        ChimeNote(
+                            frequency = 659.25f, // E5 (chaleur du marimba)
+                            startMs = 0,
+                            durationMs = 200,
+                            amplitude = 0.30f,
+                            decayRate = 6.5f,
+                            brightHarmonics = false
+                        ),
+                        // 2ème note (85ms plus tard) : résolution lumineuse et cristalline sur l'accord de Mi Majeur (E6 + G#5 + B5)
+                        ChimeNote(
+                            frequency = 1318.51f, // E6 (cloche cristalline aiguë)
+                            startMs = 85,
+                            durationMs = 380,
+                            amplitude = 0.95f,
+                            decayRate = 4.6f,
+                            brightHarmonics = true
+                        ),
+                        ChimeNote(
+                            frequency = 830.61f, // G#5 (tierce majeure chaleureuse)
+                            startMs = 85,
+                            durationMs = 340,
+                            amplitude = 0.36f,
+                            decayRate = 5.2f,
+                            brightHarmonics = false
+                        ),
+                        ChimeNote(
+                            frequency = 987.77f, // B5 (quinte)
+                            startMs = 85,
+                            durationMs = 340,
+                            amplitude = 0.32f,
+                            decayRate = 5.4f,
+                            brightHarmonics = false
+                        )
                     )
                 )
-            } catch (e: Throwable) {
-                // Fallback to ToneGenerator
+            } catch (_: Throwable) {
                 toneGen?.startTone(ToneGenerator.TONE_PROP_PROMPT, 150)
             }
         }
     }
 
     /**
-     * Gentle low buzzer for incorrect answer
+     * Son doux et feutré de mauvaise réponse (double note boisée descendante, non agressive)
      */
     fun playIncorrectSound() {
         scope.launch {
             try {
-                playTones(
+                playPolyphonicChime(
                     listOf(
-                        Tone(frequency = 220.0f, durationMs = 120),
-                        Tone(frequency = 175.0f, durationMs = 180)
+                        ChimeNote(
+                            frequency = 329.63f, // E4
+                            startMs = 0,
+                            durationMs = 150,
+                            amplitude = 0.65f,
+                            decayRate = 5.5f,
+                            brightHarmonics = false
+                        ),
+                        ChimeNote(
+                            frequency = 246.94f, // B3
+                            startMs = 95,
+                            durationMs = 240,
+                            amplitude = 0.70f,
+                            decayRate = 4.8f,
+                            brightHarmonics = false
+                        )
                     )
                 )
-            } catch (e: Throwable) {
+            } catch (_: Throwable) {
                 toneGen?.startTone(ToneGenerator.TONE_PROP_NACK, 200)
             }
         }
     }
 
     /**
-     * Grand celebratory fanfare when completing a lesson or unit (C5 -> E5 -> G5 -> C6)
+     * Fanfare cristalline de victoire à la fin d'une leçon (arpège lumineux C5 -> E5 -> G5 -> C6)
      */
     fun playLessonCompleteSound() {
         scope.launch {
             try {
-                playTones(
+                playPolyphonicChime(
                     listOf(
-                        Tone(frequency = 523.25f, durationMs = 100), // C5
-                        Tone(frequency = 659.25f, durationMs = 100), // E5
-                        Tone(frequency = 783.99f, durationMs = 120), // G5
-                        Tone(frequency = 1046.50f, durationMs = 350) // C6 high bell
+                        ChimeNote(frequency = 523.25f, startMs = 0, durationMs = 240, amplitude = 0.65f, decayRate = 5.0f),   // C5
+                        ChimeNote(frequency = 659.25f, startMs = 90, durationMs = 260, amplitude = 0.72f, decayRate = 5.0f),  // E5
+                        ChimeNote(frequency = 783.99f, startMs = 180, durationMs = 280, amplitude = 0.80f, decayRate = 4.8f), // G5
+                        ChimeNote(frequency = 1046.50f, startMs = 275, durationMs = 560, amplitude = 0.95f, decayRate = 3.6f), // C6
+                        ChimeNote(frequency = 659.25f, startMs = 275, durationMs = 500, amplitude = 0.35f, decayRate = 4.2f, brightHarmonics = false),
+                        ChimeNote(frequency = 783.99f, startMs = 275, durationMs = 500, amplitude = 0.35f, decayRate = 4.2f, brightHarmonics = false)
                     )
                 )
-            } catch (e: Throwable) {
+            } catch (_: Throwable) {
                 toneGen?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 400)
             }
         }
     }
 
     /**
-     * Flame / streak sound
+     * Carillon dynamique pour le maintien de la série (streak)
      */
     fun playStreakSound() {
         scope.launch {
             try {
-                playTones(
+                playPolyphonicChime(
                     listOf(
-                        Tone(frequency = 440.0f, durationMs = 80),
-                        Tone(frequency = 554.37f, durationMs = 80),
-                        Tone(frequency = 659.25f, durationMs = 200)
+                        ChimeNote(frequency = 587.33f, startMs = 0, durationMs = 180, amplitude = 0.70f, decayRate = 5.5f),   // D5
+                        ChimeNote(frequency = 739.99f, startMs = 75, durationMs = 200, amplitude = 0.78f, decayRate = 5.2f),  // F#5
+                        ChimeNote(frequency = 880.00f, startMs = 150, durationMs = 220, amplitude = 0.85f, decayRate = 5.0f), // A5
+                        ChimeNote(frequency = 1174.66f, startMs = 225, durationMs = 420, amplitude = 0.95f, decayRate = 4.0f) // D6
                     )
                 )
-            } catch (e: Throwable) {
+            } catch (_: Throwable) {
                 toneGen?.startTone(ToneGenerator.TONE_PROP_ACK, 200)
             }
         }
     }
 
-    private data class Tone(val frequency: Float, val durationMs: Int)
+    /**
+     * Synthétiseur PCM polyphonique à enveloppe percussive exponentielle et harmoniques de célesta.
+     */
+    private suspend fun playPolyphonicChime(notes: List<ChimeNote>) {
+        if (notes.isEmpty()) return
 
-    private fun playTones(tones: List<Tone>) {
         val sampleRate = 44100
-        val totalSamples = tones.sumOf { (it.durationMs * sampleRate) / 1000 }
-        val buffer = ShortArray(totalSamples)
+        val totalDurationMs = notes.maxOf { it.startMs + it.durationMs } + 25
+        val totalSamples = (totalDurationMs * sampleRate) / 1000
+        val mixBuffer = FloatArray(totalSamples)
 
-        var offset = 0
-        for (tone in tones) {
-            val count = (tone.durationMs * sampleRate) / 1000
-            val angleStep = (2.0 * Math.PI * tone.frequency) / sampleRate
+        for (note in notes) {
+            val startSample = (note.startMs * sampleRate) / 1000
+            val sampleCount = (note.durationMs * sampleRate) / 1000
+            val attackSamples = maxOf(1, (3.5f * sampleRate / 1000f).toInt()) // 3.5ms crisp attack
 
-            for (i in 0 until count) {
-                // Envelope window: soft attack and gentle decay to avoid audio clicks
-                val progress = i.toFloat() / count.toFloat()
-                val envelope = when {
-                    progress < 0.1f -> progress / 0.1f
-                    progress > 0.7f -> (1.0f - progress) / 0.3f
-                    else -> 1.0f
+            val twoPiOverSr = (2.0 * Math.PI) / sampleRate
+            val w1 = twoPiOverSr * note.frequency
+            val w2 = twoPiOverSr * (note.frequency * 2.0f)
+            val w3 = twoPiOverSr * (note.frequency * 3.0f)
+            val w4 = twoPiOverSr * (note.frequency * 4.0f)
+
+            for (i in 0 until sampleCount) {
+                val targetIndex = startSample + i
+                if (targetIndex >= totalSamples) break
+
+                val progress = i.toFloat() / sampleCount.toFloat()
+
+                // Attack / exponential bell decay + smooth tail fade-out to zero
+                val attackEnv = if (i < attackSamples) {
+                    i.toFloat() / attackSamples.toFloat()
+                } else {
+                    1.0f
                 }
-                val sampleValue = (sin(i * angleStep) * Short.MAX_VALUE * 0.75f * envelope).toInt()
-                if (offset + i < buffer.size) {
-                    buffer[offset + i] = sampleValue.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                val expDecay = exp(-note.decayRate * progress)
+                val tailFade = if (progress > 0.85f) {
+                    (1.0f - progress) / 0.15f
+                } else {
+                    1.0f
                 }
+                val env = attackEnv * expDecay * tailFade
+
+                // Fundamental + crystalline bell harmonics (octave, 12th, double-octave sparkle)
+                var rawWave = sin(i * w1).toFloat()
+                if (note.brightHarmonics) {
+                    val h2Env = exp(-note.decayRate * 1.45f * progress)
+                    val h3Env = exp(-note.decayRate * 2.1f * progress)
+                    val h4Env = exp(-note.decayRate * 3.2f * progress)
+                    rawWave += 0.36f * sin(i * w2).toFloat() * h2Env
+                    rawWave += 0.14f * sin(i * w3).toFloat() * h3Env
+                    rawWave += 0.06f * sin(i * w4).toFloat() * h4Env
+                } else {
+                    val h2Env = exp(-note.decayRate * 1.6f * progress)
+                    rawWave += 0.20f * sin(i * w2).toFloat() * h2Env
+                }
+
+                mixBuffer[targetIndex] += rawWave * note.amplitude * env
             }
-            offset += count
+        }
+
+        // Normalisation douce pour éviter toute saturation tout en gardant un volume clair et présent
+        var peak = 0.01f
+        for (s in mixBuffer) {
+            val absVal = kotlin.math.abs(s)
+            if (absVal > peak) peak = absVal
+        }
+        val targetGain = if (peak > 0.92f) 0.92f / peak else 0.88f / maxOf(peak, 0.88f)
+
+        val pcmBuffer = ShortArray(totalSamples)
+        for (i in 0 until totalSamples) {
+            val normalized = (mixBuffer[i] * targetGain * Short.MAX_VALUE).toInt()
+            pcmBuffer[i] = normalized.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
         }
 
         val minBufferSize = AudioTrack.getMinBufferSize(
@@ -138,7 +254,7 @@ object SoundEffectsManager {
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build()
             )
             .setAudioFormat(
@@ -148,17 +264,18 @@ object SoundEffectsManager {
                     .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                     .build()
             )
-            .setBufferSizeInBytes(maxOf(minBufferSize, buffer.size * 2))
+            .setBufferSizeInBytes(maxOf(minBufferSize, pcmBuffer.size * 2))
             .setTransferMode(AudioTrack.MODE_STATIC)
             .build()
 
-        track.write(buffer, 0, buffer.size)
+        track.write(pcmBuffer, 0, pcmBuffer.size)
         track.play()
 
-        // Wait tone duration before releasing
-        val totalDuration = tones.sumOf { it.durationMs }
-        Thread.sleep(totalDuration.toLong() + 50L)
-        track.stop()
+        delay(totalDurationMs.toLong() + 45L)
+        try {
+            track.stop()
+        } catch (_: Throwable) {
+        }
         track.release()
     }
 }

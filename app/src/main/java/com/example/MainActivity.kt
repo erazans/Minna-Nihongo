@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
                                 masteredKanji = userStats.masteredKanji,
                                 onToggleMasterKanji = { kanji -> viewModel.toggleMasterKanji(kanji) },
                                 onAddXp = { /* XP system removed */ },
+                                autoPronounceEnabled = userStats.autoPronounceWords,
                                 bottomBar = bottomNavBar
                             )
                         }
@@ -120,7 +121,8 @@ class MainActivity : ComponentActivity() {
                                     onSpeak = { text -> viewModel.speak(text) },
                                     onLoseLife = { viewModel.loseLife() },
                                     currentLives = 5,
-                                    romajiMode = userStats.romajiDisplayMode
+                                    romajiMode = userStats.romajiDisplayMode,
+                                    autoPronounceEnabled = userStats.autoPronounceWords
                                 )
                             } ?: run {
                                 viewModel.onBack()
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
                                 onSpeak = { text -> viewModel.speak(text) },
                                 onAddXp = { /* XP removed */ },
                                 romajiMode = userStats.romajiDisplayMode,
+                                autoPronounceEnabled = userStats.autoPronounceWords,
                                 bottomBar = bottomNavBar
                             )
                         }
@@ -148,6 +151,7 @@ class MainActivity : ComponentActivity() {
                                 onToggleBookmark = { id -> viewModel.toggleBookmarkWord(id) },
                                 onToggleMastered = { id -> viewModel.toggleMasteredWord(id) },
                                 romajiMode = userStats.romajiDisplayMode,
+                                autoPronounceEnabled = userStats.autoPronounceWords,
                                 bottomBar = bottomNavBar
                             )
                         }
@@ -161,6 +165,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel.setDailyReminder(enabled, hour, min)
                                 },
                                 onUpdateRomajiMode = { mode -> viewModel.updateRomajiDisplayMode(mode) },
+                                onToggleAutoPronounce = { enabled -> viewModel.updateAutoPronounce(enabled) },
                                 onResetProgress = { viewModel.resetAllProgress() },
                                 bottomBar = bottomNavBar
                             )

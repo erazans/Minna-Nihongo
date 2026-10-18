@@ -543,6 +543,7 @@ fun NumberCardItem(
 fun NumbersTimeQuizView(
     onSpeak: (String) -> Unit,
     onAddXp: (Int) -> Unit = {},
+    autoPronounceEnabled: Boolean = true,
     onExitQuiz: () -> Unit
 ) {
     data class QuizQuestion(
@@ -635,7 +636,9 @@ fun NumbersTimeQuizView(
     var isCorrect by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentQ) {
-        onSpeak(currentQ.targetJp)
+        if (autoPronounceEnabled) {
+            onSpeak(currentQ.targetJp)
+        }
     }
 
     Card(

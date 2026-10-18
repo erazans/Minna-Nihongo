@@ -59,6 +59,7 @@ fun KanaStudyScreen(
     masteredKanji: Set<String> = emptySet(),
     onToggleMasterKanji: (String) -> Unit = {},
     onAddXp: (Int) -> Unit = {},
+    autoPronounceEnabled: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -202,6 +203,7 @@ fun KanaStudyScreen(
                         NumbersTimeQuizView(
                             onSpeak = onSpeak,
                             onAddXp = onAddXp,
+                            autoPronounceEnabled = autoPronounceEnabled,
                             onExitQuiz = { isQuizModeActive = false }
                         )
                     }
@@ -210,6 +212,7 @@ fun KanaStudyScreen(
                             kanjiList = MinnaKanjiData.allKanji,
                             onSpeak = onSpeak,
                             onAddXp = onAddXp,
+                            autoPronounceEnabled = autoPronounceEnabled,
                             onExitQuiz = { isQuizModeActive = false }
                         )
                     }
@@ -219,6 +222,7 @@ fun KanaStudyScreen(
                             kanaType = kanaType,
                             onSpeak = onSpeak,
                             onAddXp = onAddXp,
+                            autoPronounceEnabled = autoPronounceEnabled,
                             onExitQuiz = { isQuizModeActive = false }
                         )
                     }
@@ -811,6 +815,7 @@ fun KanaQuizView(
     kanaType: KanaType,
     onSpeak: (String) -> Unit,
     onAddXp: (Int) -> Unit,
+    autoPronounceEnabled: Boolean = true,
     onExitQuiz: () -> Unit
 ) {
     val pool = remember(kanaType) {
@@ -833,7 +838,9 @@ fun KanaQuizView(
         isAnswered = false
         isCorrect = false
         questionIndex++
-        onSpeak(currentTarget.character)
+        if (autoPronounceEnabled) {
+            onSpeak(currentTarget.character)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -987,6 +994,7 @@ fun KanjiQuizView(
     kanjiList: List<KanjiCharacter>,
     onSpeak: (String) -> Unit,
     onAddXp: (Int) -> Unit,
+    autoPronounceEnabled: Boolean = true,
     onExitQuiz: () -> Unit
 ) {
     var currentTarget by remember { mutableStateOf(kanjiList.shuffled().first()) }
@@ -1003,7 +1011,9 @@ fun KanjiQuizView(
         selectedOption = null
         isAnswered = false
         isCorrect = false
-        onSpeak(currentTarget.kanji)
+        if (autoPronounceEnabled) {
+            onSpeak(currentTarget.kanji)
+        }
     }
 
     LaunchedEffect(Unit) {

@@ -283,6 +283,9 @@ fun GlossaryReviewContent(
             val currentEx = exercises.getOrNull(currentExerciseIndex)
 
             if (isSessionComplete || currentEx == null) {
+                LaunchedEffect(Unit) {
+                    SoundEffectsManager.playLessonCompleteSound()
+                }
                 // Completion Summary
                 Column(
                     modifier = Modifier
@@ -492,7 +495,6 @@ fun GlossaryReviewContent(
                                     } else {
                                         SoundEffectsManager.playIncorrectSound()
                                     }
-                                    currentEx.audioText?.let { onSpeak(it) }
                                 }
                             } else {
                                 // Next question
