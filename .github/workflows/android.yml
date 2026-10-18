@@ -1,26 +1,44 @@
-name: Build & Publish Release APK
+name: Build APK Minna no Nihongo
 
 on:
   push:
-    tags:
-      - '*'
+    branches: [ "main", "master" ]
+    tags: [ "*" ]
+  workflow_dispatch: # Permet de lancer la compilation manuellement d'un clic sur GitHub
 
 jobs:
-  Gradle:
+  build-apk:
     runs-on: ubuntu-latest
     steps:
-    - name: checkout code
-      uses: actions/checkout@v2
-    - name: setup jdk
-      uses: actions/setup-java@v1
-      with:
-        java-version: 11
-    - name: Make Gradle executable
-      run: chmod +x ./gradlew
-    - name: Build Release APK
-      run: ./gradlew assembleRelease
-    - name: Releasing using Hub
-      uses: sangatdesai/release-apk@main
-      env:
-       GITHUB_TOKEN: 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
-       APP_FOLDER: app
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configuration du SDK Android
+        uses: android-actions/setup-android@v3
+
+      - name: Installation de Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Génération du debug.keystore manquant
+        run: |
+          keytool -genkey -v -keystore debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Compilation de l'APK Debug (pré-signé et installable)
+        run: gradle assembleDebug
+
+      - name: Export de l'APK en tant qu'artefact téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minna-Nihongo-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
